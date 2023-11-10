@@ -1,0 +1,69 @@
+```{r, include=FALSE}
+knitr::opts_chunk$set(eval=TRUE, include=TRUE, echo=TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+# getting libraries
+if (!requireNamespace("tidyverse", quietly = TRUE))
+  install.packages("tidyverse")
+library(tidyverse)
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+library(rhdf5)
+
+
+apogee <- h5ls("STA130_APOGEE.h5")
+head(apogee)
+h5closeAll()
+
+# get all fe_h values
+fe_h <- "STA130_APOGEE.h5" %>% h5read("fe_h") %>% as_tibble()
+glimpse(fe_h)
+
+# histogram
+ggplot() + aes(x=fe_h$value) + 
+  geom_histogram(bins=20) +
+  labs(x="[Fe/H]", y="Number of Stars", title="Distribution of [Fe/H] in Stars")
+
+# boxplot
+ggplot() + aes(x="", y=fe_h$value) + geom_boxplot() +
+  coord_flip() +
+  labs(x="", y="[Fe/H]", title="[Fe/H] values of Stars")
+
+# summary table
+summarize(fe_h,
+          n = n(),
+          median = median(value),
+          mean=mean(value),
+          iqr=IQR(value))
+```
+
+```{r}
+# hypothesis testing
+set.seed(1)
+
+
+alpha <- 0.05  # alpha significance level
+
+f_null <- 0
+N <- 1000
+n <- 100
+
+simulated_sample_medians <- rep(NA, N)
+for(i in 1:N){
+  simulated_sample <- fe_h %>% sample_n(size=n, replace=FALSE)
+  simulated_sample_medians[i] <- median(simulated_sample$value)
+}
+
+ggplot() + aes(x=simulated_sample_medians) + 
+  geom_histogram(bins=20) +
+  labs(x="Sample Median", y="Number of Samples", title="Sample Median Distribution")
+
+p <- sum(simulated_sample_medians >= f_null)/ N
+p_2 <- p * 2
+p_2
+
+reject <- p_2 < alpha  # final decision
+reject
+```
